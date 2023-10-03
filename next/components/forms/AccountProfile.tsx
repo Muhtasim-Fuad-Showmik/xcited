@@ -16,7 +16,7 @@ import { UserValidation } from "@/lib/validations/user";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Image from "next/image";
-import { ChangeEvent } from "react";
+import { ChangeEvent, useState } from "react";
 import { Textarea } from "../ui/textarea";
 
 interface Props {
@@ -32,23 +32,56 @@ interface Props {
 }
 
 const AccountProfile = ({ user, btnTitle }: Props) => {
+  const [files, setFiles] = useState<File[]>([]);
+
   const form = useForm({
     // Add validations for the user object to the form
     resolver: zodResolver(UserValidation),
     // Add default values for the user object
     defaultValues: {
-      profilePhoto: "",
-      name: "",
-      username: "",
-      bio: "",
+      profile_photo: user?.image || "",
+      name: user?.name || "",
+      username: user?.username || "",
+      bio: user?.bio || "",
     },
   });
 
   const handleImage = (
-    e: ChangeEvent,
+    e: ChangeEvent<HTMLInputElement>,
     fieldChange: (value: string) => void
   ) => {
+    // Prevent browser from reloading
     e.preventDefault();
+
+    // Initialize a file reader
+    const fileReader = new FileReader();
+
+    // Check if the event target contains files
+    if (e.target.files && e.target.files.length > 0) {
+      // Get the first file from the event target
+      const file = e.target.files[0];
+
+      // Set files state using the files from the event target
+      setFiles(Array.from(e.target.files));
+
+      // Exit the function if no images are included among the files
+      if (!file.type.includes("image")) return;
+
+      /**
+       * Grab the image URL if exists and update
+       * when file reader is loaded
+       */
+      fileReader.onload = async (event) => {
+        // Grab the image URL if exists
+        const imageDataUrl = event.target?.result?.toString() || "";
+
+        // Update by passing the image data URL
+        fieldChange(imageDataUrl);
+      };
+
+      // Read the file as a data URL now
+      fileReader.readAsDataURL(file);
+    }
   };
 
   function onSubmit(values: z.infer<typeof UserValidation>) {
