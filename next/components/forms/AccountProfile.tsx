@@ -18,6 +18,8 @@ import * as z from "zod";
 import Image from "next/image";
 import { ChangeEvent, useState } from "react";
 import { Textarea } from "../ui/textarea";
+import { isBase64Image } from "@/lib/utils";
+import { useUploadThing } from "@/lib/uploadthing";
 
 interface Props {
   user: {
@@ -33,6 +35,8 @@ interface Props {
 
 const AccountProfile = ({ user, btnTitle }: Props) => {
   const [files, setFiles] = useState<File[]>([]);
+
+  const { startUpload } = useUploadThing("media");
 
   const form = useForm({
     // Add validations for the user object to the form
@@ -84,11 +88,25 @@ const AccountProfile = ({ user, btnTitle }: Props) => {
     }
   };
 
-  function onSubmit(values: z.infer<typeof UserValidation>) {
-    // Do something with the form values.
-    // ✅ This will be type-safe and validated.
-    console.log(values);
-  }
+  const onSubmit = async (values: z.infer<typeof UserValidation>) => {
+    // Grab the image blob from the submitted values
+    const blob = values.profile_photo;
+
+    // Check if the image was changed
+    // (in which case a blob will be returned)
+    const hasImageChanged = isBase64Image(blob);
+
+    // If the image has indeed changed
+    if (hasImageChanged) {
+      const imgRes = await startUpload(files);
+
+      if (imgRes && imgRes[0].fileUrl) {
+        values.profile_photo = imgRes[0].fileUrl;
+      }
+    }
+
+    // TODO: Update user profile
+  };
 
   return (
     <Form {...form}>
